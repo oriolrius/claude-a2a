@@ -70,14 +70,25 @@ In agent-b:
 
 ## Protocol notes
 
-This is a minimal A2A implementation:
+A2A subset implemented:
 - ✅ Agent Card discovery
 - ✅ JSON-RPC 2.0 transport
 - ✅ Task lifecycle (`submitted` → `input-required` → `completed` / `canceled`)
 - ✅ Text parts + artifacts
-- ❌ No streaming (`message/stream` SSE) — polling only
-- ❌ No push notifications (`tasks/pushNotificationConfig/*`)
-- ❌ No auth — bound to 127.0.0.1
+- ✅ Streaming via `message/stream` and `tasks/resubscribe` (Server-Sent Events)
+- ✅ Push notifications (`tasks/pushNotificationConfig/set` + `/get`, async webhook delivery with optional bearer-style token header)
+- ❌ No auth on the JSON-RPC endpoint itself — bound to 127.0.0.1
+
+## Tests
+
+```bash
+uv sync
+uv run pytest
+```
+
+17 tests cover: agent card, message/send, get/cancel/respond, inbox, context continuity, SSE message/stream, SSE resubscribe, error paths for unknown tasks/methods, push config set/get, push webhook delivery on artifact + status events (with token header), no-delivery when push not configured.
+
+Push delivery is verified by spinning up a tiny FastAPI capture server on a free port inside the test and asserting on captured payloads + headers.
 
 `tasks/respond` is a non-standard helper exposed so a Claude session can complete a task that the peer sent it. In a fully-conforming implementation an agent would process incoming messages autonomously and update its own task state.
 
