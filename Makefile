@@ -31,3 +31,38 @@ down:
 # Smoke test: send hello from A to B and poll
 smoke:
 	uv run python smoke.py
+
+# Worker lifecycle
+worker-up:
+	@if [ -f agent-b/state/worker.pid ] && kill -0 $$(cat agent-b/state/worker.pid) 2>/dev/null; then \
+		echo "worker already running (pid $$(cat agent-b/state/worker.pid))"; \
+	else \
+		nohup agent-b/worker.sh >/tmp/a2a-worker.out 2>&1 & \
+		sleep 1; \
+		echo "worker started (pid $$(cat agent-b/state/worker.pid 2>/dev/null))"; \
+	fi
+
+worker-down:
+	@if [ -f agent-b/state/worker.pid ]; then \
+		kill $$(cat agent-b/state/worker.pid) 2>/dev/null && echo "worker stopped"; \
+		rm -f agent-b/state/worker.pid; \
+	else \
+		echo "no worker pid file"; \
+	fi
+
+test:
+	uv run pytest
+
+demo:
+	./demo/run.sh
+
+demo-mock:
+	./demo/run.sh --mock-ytdlp
+
+demo-stream:
+	./demo/run-stream.sh
+
+demo-push:
+	./demo/run-push.sh
+
+.PHONY: install run-a run-b stop up down smoke worker-up worker-down test demo demo-mock demo-stream demo-push

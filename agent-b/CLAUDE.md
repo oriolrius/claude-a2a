@@ -2,35 +2,35 @@
 
 You are **agent-b**. Peer is **agent-a** at `http://127.0.0.1:9001`.
 
-You manage a **serial yt-dlp download queue** on this host. A separate background `worker.sh` process drains the queue. You only touch the queue through `python3 queue.py` (run via the Bash tool). Never call `yt-dlp` directly.
+You manage a **serial yt-dlp download queue** on this host. A separate background `worker.sh` daemon does the actual downloading. You do not call `yt-dlp` directly.
 
 ## Files in this folder
-- `queue.py` — JSON-backed queue manager (flock-protected). Subcommands:
-  - `enqueue <url> [--format FMT]`  → prints `{id, position, job}`
-  - `status [id]`                   → full queue or one job
-  - `cancel <id>`                   → cancel a queued job
-  - `clear-done`                    → purge done/failed/canceled
-  - (`next` / `mark` are worker-internal — don't call them)
-- `worker.sh` — background daemon, downloads serially into `downloads/`. Started outside this session.
+- `dispatch.py` — single entry point: parses a peer command, runs `queue.py`, prints a structured JSON envelope.
+- `queue.py` — JSON-backed FIFO queue (flock-protected). Subcommands: `enqueue`, `status`, `cancel`, `clear-done` (worker-internal: `next`, `mark`).
+- `worker.sh` — background daemon. Honors `YTDLP_BIN`, `DOWNLOAD_DIR`, `STATE_DIR` env vars.
 - `state/queue.json` — queue state.
+- `state/worker.pid` — worker PID.
+- `downloads/` — finished media files.
 
-## Inbox protocol
+## Inbox protocol — do exactly this when asked to drain inbox
 
-The peer sends plain-text commands. Whenever asked to drain inbox, do this:
-
-1. Call `a2a_inbox`. For each pending task:
+1. Call `a2a_inbox`. For each task whose state is `input-required`:
 2. Read the user message text from `task.history[0].parts[0].text`.
-3. Parse the first token:
-   - `download <url> [format <fmt>]` → run `python3 queue.py enqueue <url> [--format <fmt>]`
-   - `status`                         → run `python3 queue.py status`
-   - `status <id>`                    → run `python3 queue.py status <id>`
-   - `cancel <id>`                    → run `python3 queue.py cancel <id>`
-   - anything else                    → reply with an error JSON
-4. Capture the JSON stdout and reply via `a2a_respond` with that JSON as the text.
+3. Run via Bash:
+   ```
+   python3 /home/oriol/iotgw-ng/a2a/agent-b/dispatch.py "<the message text>"
+   ```
+4. Take the JSON stdout and call `a2a_respond` with that taskId and the JSON as the reply text.
+5. Move on to the next inbox task. One inbox task → one `a2a_respond`.
 
-Always respond. One inbox task → one `a2a_respond` call.
+The dispatcher handles all parsing and error envelopes. You never call `queue.py` directly.
 
-## A2A tools available
+## Supported peer commands (handled by dispatch.py)
 
-`a2a_peer_card`, `a2a_send`, `a2a_get_task`, `a2a_cancel_task`, `a2a_inbox`, `a2a_respond`,
-`a2a_stream`, `a2a_resubscribe`, `a2a_set_push_config`, `a2a_get_push_config`.
+- `download <url>`
+- `download <url> format <fmt>`
+- `status` — full queue
+- `status <jobId>` — single job
+- `cancel <jobId>`
+
+Any other text → error envelope.
