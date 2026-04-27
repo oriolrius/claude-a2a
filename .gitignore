@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.python-version
+
+# Runtime
+.pid-*
+*.log
+/tmp/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code local state
+.claude/

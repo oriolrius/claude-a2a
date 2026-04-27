@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "a2a": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/home/oriol/iotgw-ng/a2a",
+        "python", "-m", "shared.mcp_bridge",
+        "agent-b",
+        "http://127.0.0.1:9001",
+        "http://127.0.0.1:9002"
+      ]
+    }
+  }
+}
