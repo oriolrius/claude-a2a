@@ -97,3 +97,11 @@ Push delivery is verified by spinning up a tiny FastAPI capture server on a free
 ```bash
 make down
 ```
+
+## Demo: yt-dlp use case
+
+Concrete demo where agent-a asks agent-b to download videos. Agent-b owns a serial download queue powered by yt-dlp. See [demo/README.md](demo/README.md). Run:
+
+```bash
+./demo/run.sh
+```

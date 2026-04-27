@@ -9,12 +9,20 @@ run-a:
 run-b:
 	uv run python -m agent-b.server
 
-# Convenience: launch both A2A servers in background
+# Convenience: launch both A2A servers in background; skip if port already listening
 up:
-	uv run python agent-a/server.py & echo $$! > .pid-a
-	uv run python agent-b/server.py & echo $$! > .pid-b
-	@echo "agent-a :9001 (pid $$(cat .pid-a))"
-	@echo "agent-b :9002 (pid $$(cat .pid-b))"
+	@if ss -ltn 'sport = :9001' | grep -q 9001; then \
+		echo "agent-a :9001 already running (skip)"; \
+	else \
+		uv run python agent-a/server.py >/tmp/a2a-9001.log 2>&1 & echo $$! > .pid-a; \
+		echo "agent-a :9001 (pid $$(cat .pid-a))"; \
+	fi
+	@if ss -ltn 'sport = :9002' | grep -q 9002; then \
+		echo "agent-b :9002 already running (skip)"; \
+	else \
+		uv run python agent-b/server.py >/tmp/a2a-9002.log 2>&1 & echo $$! > .pid-b; \
+		echo "agent-b :9002 (pid $$(cat .pid-b))"; \
+	fi
 
 down:
 	-@kill $$(cat .pid-a) 2>/dev/null; rm -f .pid-a
