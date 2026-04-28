@@ -77,6 +77,65 @@ The MCP bridge is the same code (`shared/mcp_bridge.py`) for both agents; it tal
 
 Steps 1–6 are pure A2A. Step 7 is independent work the queue owner does on its own clock.
 
+### Flow diagram (single download request)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CA as Claude A
+    participant MA as MCP bridge A
+    participant SA as A2A server :9001
+    participant SB as A2A server :9002
+    participant MB as MCP bridge B
+    participant CB as Claude B
+    participant D as dispatch.py
+    participant Q as queue.json
+    participant W as worker.sh
+    participant FS as downloads/
+
+    CA->>MA: tool a2a_send "download URL"
+    MA->>SB: POST / message/send
+    SB->>SB: TaskStore.create (state=input-required)
+    SB-->>MA: 200 Task{id, contextId}
+    MA-->>CA: tool result Task
+
+    loop poll until completed
+        CA->>MA: tool a2a_get_task
+        MA->>SB: POST / tasks/get
+        SB-->>MA: Task
+        MA-->>CA: Task
+    end
+
+    Note over CB: drain cycle starts
+    CB->>MB: tool a2a_inbox
+    MB->>SB: POST / tasks/inbox
+    SB-->>MB: [Task ...]
+    MB-->>CB: pending tasks
+
+    CB->>D: Bash: dispatch.py "download URL"
+    D->>Q: queue.py enqueue URL
+    Q-->>D: {id, position, job}
+    D-->>CB: {command, ok, result}
+
+    CB->>MB: tool a2a_respond(taskId, JSON)
+    MB->>SB: POST / tasks/respond
+    SB->>SB: state=completed; emit artifact + status-update(final)
+    SB-->>MB: Task
+    MB-->>CB: ok
+
+    par worker independent loop
+        W->>Q: queue.py next
+        Q-->>W: job (state=running)
+        W->>W: yt-dlp -o ... URL
+        W->>FS: writes file
+        W->>Q: queue.py mark id done --file ...
+    end
+
+    Note over CA: next poll sees state=completed,<br/>reads artifacts[0].parts[0].text
+```
+
+The same flow works for `status` and `cancel` — only the `dispatch.py` branch + `queue.py` subcommand change. The `a2a_stream` showcase replaces the polling loop with a single SSE subscription that yields `task` → `artifact-update` → `status-update[final]`. The `push` showcase keeps polling but additionally fans every state change out to a registered webhook.
+
 ## The three demos
 
 Each script boots A2A servers, the worker, and runs both Claude sessions headless via `claude -p --permission-mode bypassPermissions`. They differ only in how `agent-a` reads results back.
