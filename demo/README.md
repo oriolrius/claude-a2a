@@ -119,7 +119,7 @@ sequenceDiagram
 
     CB->>MB: tool a2a_respond(taskId, JSON)
     MB->>SB: POST / tasks/respond
-    SB->>SB: state=completed; emit artifact + status-update(final)
+    SB->>SB: mark completed and emit final events
     SB-->>MB: Task
     MB-->>CB: ok
 

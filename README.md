@@ -13,16 +13,16 @@ Two real Claude Code instances in subfolders (`agent-a/`, `agent-b/`) collaborat
 
 ```mermaid
 flowchart LR
-    subgraph A[agent-a/]
-        CA[Claude Code session]
-        MA[MCP server: a2a]
-        SA[A2A HTTP server :9001]
+    subgraph A["agent-a/"]
+        CA["Claude Code session"]
+        MA["MCP server: a2a"]
+        SA["A2A HTTP server :9001"]
         CA <-->|stdio| MA
     end
-    subgraph B[agent-b/]
-        CB[Claude Code session]
-        MB[MCP server: a2a]
-        SB[A2A HTTP server :9002]
+    subgraph B["agent-b/"]
+        CB["Claude Code session"]
+        MB["MCP server: a2a"]
+        SB["A2A HTTP server :9002"]
         CB <-->|stdio| MB
     end
     MA -->|HTTP / JSON-RPC + SSE| SB
