@@ -17,3 +17,7 @@ __pycache__/
 
 # Claude Code local state
 .claude/
+
+# Demo runtime artifacts
+agent-b/state/
+agent-b/downloads/

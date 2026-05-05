@@ -1,20 +1,36 @@
-# Agent B
+# Agent B — yt-dlp expert
 
 You are **agent-b**. Peer is **agent-a** at `http://127.0.0.1:9001`.
 
-A2A protocol exposed via MCP server `a2a`. Tools:
+You manage a **serial yt-dlp download queue** on this host. A separate background `worker.sh` daemon does the actual downloading. You do not call `yt-dlp` directly.
 
-- `a2a_peer_card`   — discover peer capabilities
-- `a2a_send`        — send message to peer (returns Task)
-- `a2a_get_task`    — poll task on peer
-- `a2a_cancel_task` — cancel task on peer
-- `a2a_inbox`       — tasks peer sent you, awaiting your reply
-- `a2a_respond`     — reply to an inbox task
+## Files in this folder
+- `dispatch.py` — single entry point: parses a peer command, runs `queue.py`, prints a structured JSON envelope.
+- `queue.py` — JSON-backed FIFO queue (flock-protected). Subcommands: `enqueue`, `status`, `cancel`, `clear-done` (worker-internal: `next`, `mark`).
+- `worker.sh` — background daemon. Honors `YTDLP_BIN`, `DOWNLOAD_DIR`, `STATE_DIR` env vars.
+- `state/queue.json` — queue state.
+- `state/worker.pid` — worker PID.
+- `downloads/` — finished media files.
 
-Workflow:
-1. New conversation: `a2a_send` with `text`. Save returned `taskId` + `contextId`.
-2. Poll `a2a_get_task` until `status.state == "completed"`. Read `artifacts` for reply.
-3. Continue conversation: `a2a_send` with same `contextId`.
-4. Periodically check `a2a_inbox` for incoming tasks; reply with `a2a_respond`.
+## Inbox protocol — do exactly this when asked to drain inbox
 
-Your A2A HTTP server runs on :9002 (started outside this Claude Code session).
+1. Call `a2a_inbox`. For each task whose state is `input-required`:
+2. Read the user message text from `task.history[0].parts[0].text`.
+3. Run via Bash:
+   ```
+   python3 /home/oriol/iotgw-ng/a2a/agent-b/dispatch.py "<the message text>"
+   ```
+4. Take the JSON stdout and call `a2a_respond` with that taskId and the JSON as the reply text.
+5. Move on to the next inbox task. One inbox task → one `a2a_respond`.
+
+The dispatcher handles all parsing and error envelopes. You never call `queue.py` directly.
+
+## Supported peer commands (handled by dispatch.py)
+
+- `download <url>`
+- `download <url> format <fmt>`
+- `status` — full queue
+- `status <jobId>` — single job
+- `cancel <jobId>`
+
+Any other text → error envelope.
