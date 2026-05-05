@@ -12,7 +12,7 @@ cd "$ROOT"
 
 URLS=()
 MOCK=0
-ROUNDS=8
+ROUNDS=
 while [ $# -gt 0 ]; do
     case "$1" in
         --mock-ytdlp) MOCK=1; shift ;;
@@ -25,6 +25,8 @@ if [ "${#URLS[@]}" -eq 0 ]; then
     URLS=("https://samplelib.com/lib/preview/mp4/sample-5s.mp4"
           "https://samplelib.com/lib/preview/mp4/sample-10s.mp4")
 fi
+# Default rounds = one drain per URL + one for the final 'status' send
+[ -z "$ROUNDS" ] && ROUNDS=$(( ${#URLS[@]} + 1 ))
 
 log() { printf '\n\033[1;36m[demo]\033[0m %s\n' "$*"; }
 

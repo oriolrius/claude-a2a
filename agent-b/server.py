@@ -1,6 +1,10 @@
 """Agent B — A2A HTTP server on :9002."""
+import os
 import sys
 from pathlib import Path
+
+HERE = str(Path(__file__).resolve().parent)
+sys.path[:] = [p for p in sys.path if os.path.abspath(p or ".") != HERE]
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from shared.a2a import AgentCard, TaskStore, make_app, serve_blocking
